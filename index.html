@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello World</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <style>
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    button {
+      height: 40px;
+      width: 100px;
+      margin-right: 20px;
+    }
+    .wrapper {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .modalwindow {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      width: 300px;
+      background-color: wheat;
+      position: relative;
+      box-shadow: 0 0 15px rgb(146, 146, 166, 0.4);
+    }
+    .popupwindow {
+      height: 120px;
+      width: 90px;
+      box-shadow: 0 0 15px rgb(146, 146, 166, 0.2);
+      background-color: wheat;
+    }
+    .modalclose {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      cursor: pointer;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      height: 400px;
+      overflow: auto;
+    }
+  </style>
+  <body>
+    <div id="app"></div>
+    <script type="text/babel">
+      const Popup = ({ trigger, children, contentStyle }) => {
+        const [isOpen, setOpen] = React.useState(false);
+        const popupRef = React.useRef();
+
+        React.useEffect(() => {
+          const clickDocument = (e) => {
+            if (
+              isOpen &&
+              popupRef.current &&
+              !popupRef.current.contains(e.target)
+            ) {
+              handleClose();
+            }
+          };
+
+          if (isOpen) {
+            document.addEventListener("mousedown", clickDocument);
+            document.addEventListener("touchstart", clickDocument);
+          }
+
+          return () => {
+            document.removeEventListener("mousedown", clickDocument);
+            document.removeEventListener(`touchstart`, clickDocument);
+          };
+        }, [isOpen]);
+
+        const handleClose = () => {
+          setOpen(false);
+        };
+
+        return (
+          <div
+            style={{ position: "relative" }}
+            ref={(el) => (popupRef.current = el)}
+          >
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(!isOpen);
+              }}
+            >
+              {typeof trigger === "function" ? trigger(isOpen) : trigger}
+            </div>
+            {isOpen && (
+              <div
+                style={Object.assign(
+                  {
+                    zIndex: 9999,
+                    position: "absolute",
+                  },
+                  contentStyle
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {typeof children === "function"
+                  ? children(handleClose)
+                  : children}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const Modal = ({
+        children,
+        trigger,
+        backdropStyle,
+        modalStyle,
+        onClose = () => {},
+      }) => {
+        const [isOpen, setOpen] = React.useState(false);
+        const modalRef = React.useRef();
+        const backdropRef = React.useRef();
+        const handleClose = () => {
+          setOpen(false);
+          onClose();
+        };
+        React.useEffect(() => {
+          const clickDocument = (e) => {
+            if (
+              isOpen &&
+              backdropRef.current &&
+              e.target === backdropRef.current
+            ) {
+              handleClose();
+            }
+          };
+
+          if (isOpen) {
+            document.body.style.overflow = "hidden";
+            document.addEventListener("mousedown", clickDocument);
+            document.addEventListener("touchstart", clickDocument);
+          } else {
+            document.body.style.overflow = "auto";
+          }
+
+          return () => {
+            document.removeEventListener("mousedown", clickDocument);
+            document.removeEventListener(`touchstart`, clickDocument);
+          };
+        }, [isOpen]);
+
+        return (
+          <>
+            {trigger && (
+              <div
+                style={{ display: "contents" }}
+                key="modal-trigger"
+                onClick={() => setOpen(true)}
+              >
+                {typeof trigger === "function" ? trigger(isOpen) : trigger}
+              </div>
+            )}
+            {isOpen &&
+              ReactDOM.createPortal(
+                <div
+                  ref={(el) => (backdropRef.current = el)}
+                  style={Object.assign(
+                    {
+                      position: "fixed",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      inset: "0px",
+                      height: "100%",
+                      width: "100%",
+                      pointerEvents: "auto",
+                      zIndex: 999,
+                    },
+                    backdropStyle
+                  )}
+                  className="modal"
+                >
+                  <div style={modalStyle} ref={(el) => (modalRef.current = el)}>
+                    {typeof children === "function"
+                      ? children(handleClose)
+                      : children}
+                  </div>
+                </div>,
+                document.body
+              )}
+          </>
+        );
+      };
+
+      const Wrapper = () => {
+        return (
+          <div className="list">
+            {Array.from({ length: 20 }).map((el) => (
+              <div className="wrapper">
+                <Popup
+                  contentStyle={{ right: "20px", top: "50px" }}
+                  trigger={<button>Popup</button>}
+                >
+                  <div className="popupwindow">list</div>
+                </Popup>
+                <Modal
+                  backdropStyle={{
+                    backdropFilter: "blur(1px)",
+                  }}
+                  trigger={<button>Modal</button>}
+                >
+                  {(handleClose) => (
+                    <div className="modalwindow">
+                      <div onClick={() => handleClose()} className="modalclose">
+                        &#x2715;
+                      </div>
+                      How are you?
+                    </div>
+                  )}
+                </Modal>
+              </div>
+            ))}
+          </div>
+        );
+      };
+
+      ReactDOM.render(<Wrapper />, document.getElementById("app"));
+    </script>
+  </body>
+</html>
